@@ -25,20 +25,22 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-void read_from_pipe(int file, char *str)                 //read from pipe
+/* read string from file */
+void read_from_pipe(int file, char *str)                  //read from pipe
 {
     int len = 0;
     char c;
     do
     {
-        read(file, &c, 1);                                  //read one char
+        read(file, &c, 1);                                //read one char from pipe
         str[len] = c;
         len++;
-    } while (c != '\0'&& c != EOF);                         //while not end of string
+    } while (c != '\0'&& c != EOF);                       //while not end of string
     (str)[len] = '\0';
 }
 
-void clean_stdin(void)
+/* clean stdio (handmade rewind) */
+void clean_stdin(void)                                    // clean stdin
 {
     int c;
     do {
@@ -47,9 +49,9 @@ void clean_stdin(void)
 }
 
 
-/* Write some random text to the pipe. */
+/* Write some text to the pipe. */
 
-void write_to_pipe(int file, char* msg)                //write messege in pipe
+void write_to_pipe(int file, char* msg)                    //write messege in pipe
 {
     write(file, msg, strlen(msg) + 1);
     return;
@@ -132,10 +134,9 @@ int main(int argc, char *argv[])
 
     QCoreApplication a(argc, argv);
 		printf("run\n");
-		pid_t pid;                                          // id of process
-                                                            //int station;
-
-		int mypipe[2];                                      // creating pipes
+        pid_t pid;                                         // id of child process
+                                                           // int station;
+        int mypipe[2];                                     // creating pipes
 
 															/* Create the pipe. */
 		if (pipe(mypipe))                                  // if creting pipes
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
-		switch (pid = fork())                                 // create process
+        switch (pid = fork())                              // create process
 		{
 		case -1:
 		{
@@ -154,94 +155,84 @@ int main(int argc, char *argv[])
 		case 0:
 		{
 			// ----------------CHILD PROCESS---------------------------
-			int signo;
+            int signo;                                     // set the mask for getting signals
 			sigset_t newmask;
             sigemptyset(&newmask);
-			sigaddset(&newmask, SIGUSR1);
+            sigaddset(&newmask, SIGUSR1);                  // add signals in mask
             sigaddset(&newmask, SIGUSR2);
             sigaddset(&newmask, SIGINT);
             sigprocmask(SIG_BLOCK, &newmask, NULL);
 
 
-			char choice = '1';
+            char choice = '1';                             // choice of continue
             char *str = new char[BUFFSIZE];
 			while (choice == '1')
 			{
-				close(mypipe[0]);                   // close 0 end
+                close(mypipe[0]);                          // close 0 end
                 printf("\nEnter programm you want to build:\n");
-				gets(str);                        // get inquery
-				write_to_pipe(mypipe[1], str);    //write in pipe
-				kill(getppid(), SIGUSR1);
-
-
-
-				sigwait(&newmask, &signo);
-				if (signo == SIGUSR1)
+                gets(str);                                 // get inquery
+                write_to_pipe(mypipe[1], str);             // write in pipe
+                kill(getppid(), SIGUSR1);                  // make signal for parent process
+                sigwait(&newmask, &signo);                 // wait for signal
+                if (signo == SIGUSR1)                      // 1 - signal "YES"
 				{
                     printf("\nget answer - Program opened...\n");
 				}
 				else
                 {
-                    if (signo == SIGUSR2)
+                    if (signo == SIGUSR2)                  // 2 - signal "NO"
                     {
                         printf("\nget answer - Not supported...\n");
                     }
                     else
                     {
-                        printf("answer - Can't open this format..\n");
+                        printf("answer - Can't open this format..\n"); // other - signal "ERROR"
                     }
 				}
-				printf("\ninput 1 for continue\n");
-				scanf("%c", &choice);
-				clean_stdin();
+                printf("\ninput 1 for continue\n");        // continue process
+                scanf("%c", &choice);                      // scanf choice
+                clean_stdin();                             // clear the stdin
 			}
-			kill(getppid(), SIGUSR2);
+            kill(getppid(), SIGUSR2);                      // signal of quit from program
 			return 0;
 		}
 		default:
 			//---------------PARENT PROCESS------------------------
 		{
-            Compiler* res = new Compiler(7);     // 6 commands
+            Compiler* res = new Compiler(7);               // 7 commands
 												 /* This is the parent process.
-												 Close other end first. */
-
-
-
-
-			int signo;
+                                                 Close other end first. */
+            int signo;                                     // set mask for signals
 			sigset_t newmask;
             sigemptyset(&newmask);
-			sigaddset(&newmask, SIGUSR1);
+            sigaddset(&newmask, SIGUSR1);                  // add signals in the mask
 			sigaddset(&newmask, SIGUSR2);
-            sigprocmask(SIG_BLOCK, &newmask, NULL); /* block SIGUSR1 */
-
-            char *str = new char[BUFFSIZE];
-
+            sigprocmask(SIG_BLOCK, &newmask, NULL);        // block SIGUSR1
+            char *str = new char[BUFFSIZE];                // string for read
 			while (1)
 			{
-				sigwait(&newmask, &signo);
+                sigwait(&newmask, &signo);                 // wait child process
 				if (signo == SIGUSR1)
 				{
-                    //printf("get signal\n");
-					close(mypipe[1]);                   // close 1 end
-					read_from_pipe(mypipe[0], str);
-					printf("%s -- ", str);
-                    if (res->getCommand(str))                //result
+                    close(mypipe[1]);                      // close 1 end of pipe
+                    read_from_pipe(mypipe[0], str);        // read from pipe in buffer
+                    printf("%s -- ", str);
+                    if (res->getCommand(str))              // process result
 					{
-						printf("YES\n");
-						kill(pid, SIGUSR1);
+                        printf("YES\n");                   // if extension is supported
+                        kill(pid, SIGUSR1);                // send 1 SIGNAL
 					}
 					else
                     {
                         if (res->cmp(str))
                         {
-                            printf("ERROR\n");
-                            kill(pid,SIGINT);
+                            printf("ERROR\n");             // if extension is critical for compiler
+                            kill(pid,SIGINT);              // send 3 SIGNAL
                         }
                         else
                         {
-                            printf("NO\n");
-                            kill(pid, SIGUSR2);
+                            printf("NO\n");                // if extension not supported
+                            kill(pid, SIGUSR2);            // send 2 SIGNAL
                         }
 					}
 				}

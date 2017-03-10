@@ -4,7 +4,7 @@ Compiler::Compiler(int new_count)
 {
     this->count_of_commands = new_count;
     this->commands = new Command*[new_count];
-    for (int i = 0; i < new_count; i++)
+    for (int i = 0; i < new_count; i++)                  // add in compiler supported extensions
     {
         switch(i)
         {
@@ -58,7 +58,7 @@ Compiler::Compiler(int new_count)
 }
 bool Compiler::getCommand(char* name)
 {
-    for (int i = 0; i < this->count_of_commands; i++)
+    for (int i = 0; i < this->count_of_commands; i++)              // check file from extension
     {
         if (commands[i]->equals(name))
         {
@@ -67,48 +67,14 @@ bool Compiler::getCommand(char* name)
     }
     return false;
 }
-bool Compiler::isContain(char* name)
-{
-   for (int i = 0; i < this->count_of_commands; i++)
-   {
-        if (commands[i]->equals(name))
-        {
-           return true;
-        }
-   }
-   return false;
-}
 Compiler::~Compiler()
 {
-}
-void Compiler::write()
-{
-    FILE *file;
-    file = fopen("compiler.com","wb+");
-    fwrite(&this->count_of_commands,sizeof(int),1,file);
     for (int i = 0; i < this->count_of_commands; i++)
     {
-        this->commands[i]->write(file);
-        fwrite("\n",1,1,file);
+        delete commands[i];
     }
-    fclose(file);
 }
-Compiler* Compiler::read()
-{
-    FILE *file;
-    file = fopen("compiler.com.res","rb+");
-    int count;
-    fread(&count,sizeof(int),1,file);
-    Compiler *res = new Compiler(count);
-    for (int i = 0; i < count; i++)
-    {
-        res->commands[i]->read(file);
-        fseek(file,1,1);
-    }
-    fclose(file);
-    return res;
-}
-bool Compiler::cmp(char* str)
+bool Compiler::cmp(char* str)                                     // compare extension with criticall extension for compiler
 {
     Command* error = new Command(".pdf");
         if (error->equals(str))

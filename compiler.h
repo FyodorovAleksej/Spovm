@@ -12,10 +12,7 @@ public:
     static bool cmp(char* str);
     Compiler(int);
     ~Compiler();
-    bool isContain(char*);
     bool getCommand(char*);
-    void write();
-    static Compiler* read();
 };
 
 #endif // COMPILER_H

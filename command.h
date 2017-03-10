@@ -12,8 +12,6 @@ public:
     Command(char*);
     ~Command();
     bool equals(char*);
-    static Command* read(FILE*);
-    void write(FILE*);
 };
 
 #endif // MEAL_H

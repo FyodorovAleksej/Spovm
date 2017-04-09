@@ -25,7 +25,6 @@ public:
     static bool cmp(char* str);
     Compiler(int);
     ~Compiler();
-    bool isContain(char*);
     bool getCommand(char*);
     int run(char* str);
 };

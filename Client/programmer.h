@@ -5,6 +5,8 @@
 #include <iostream>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <fstream>
 
 using namespace std;
 
@@ -22,12 +24,15 @@ public:
 
     ~Programmer();
 
-    bool connectToPipe(char* pipePath);
+    bool connectToPipe(char* pipePath, char* mode);
 
     void runCompile(char* program);
 
     void closeConnectionToPipe();
 
+    void logIn();
+
+    void logOut(char* str);
 };
 
 #endif // CLIENT_H

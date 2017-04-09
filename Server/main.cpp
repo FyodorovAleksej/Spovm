@@ -32,7 +32,9 @@
 
 #define PIPE_NAME "/home/alexey/Lab_1/fifofile"
 #define SEMAPHORE_NAME "/my_named_semaphore"
-
+#define QUEUE_PIPE "/home/alexey/Lab_1/queuefile"
+#define QUEUE_SEMAPHORE "/queue_semaphore"
+#define QUEUE_FILE_SEMAPHORE "/queueFile_semaphore"
 
 #endif
 
@@ -40,6 +42,53 @@ using namespace std;
 
 #define BUFFSIZE 256
 #define CLIENT_COUNT 3                                               // the count of the clients
+
+int getInt()
+{
+    sigset_t newmask;                                                // mask for signals
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGUSR1);
+    sigaddset(&newmask, SIGUSR2);
+    sigaddset(&newmask, SIGINT);
+    sigprocmask(SIG_BLOCK, &newmask, NULL);
+
+    int power = 1;
+    int sum = 0;
+    int getSignal;
+
+    bool flag = true;
+
+    while (flag)
+    {
+        sigwait(&newmask,&getSignal);
+        switch(getSignal)
+        {
+        case SIGUSR1:
+        {
+            printf("1");
+            sum += power;
+            power = power << 1;
+            break;
+        }
+        case SIGUSR2:
+        {
+            printf("0");
+            power = power << 1;
+            break;
+        }
+        case SIGINT:
+        {
+            flag = false;
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+    }
+    return sum;
+}
 
 
 int main(int argc, char *argv[])
@@ -122,7 +171,12 @@ int main(int argc, char *argv[])
         unlink(PIPE_NAME);
         mkfifo(PIPE_NAME, O_RDWR);                                       // сreating pipe for communicating between clients and server
         unlink(PIPE_NAME);
-        sem_t *mutex;                                                    // declare semaphore
+
+        unlink(QUEUE_PIPE);
+        mkfifo(QUEUE_PIPE, O_RDWR);                                       // сreating pipe for communicating between clients and server
+        unlink(QUEUE_PIPE);
+
+        sem_t *mutex, *queueMutex, *queueFileMutex;                                                    // declare semaphore
         int value = 0;
         mutex = sem_open(SEMAPHORE_NAME,O_CREAT,0644,0);                 // creating semaphore (mutex)
         if(mutex == SEM_FAILED)
@@ -131,10 +185,46 @@ int main(int argc, char *argv[])
             sem_unlink(SEMAPHORE_NAME);                                  // destroying semaphore
             return -1;
         }
-        sem_post(mutex);                                                 // release semaphore
+        value = 0;
+        sem_trywait(mutex);
         sem_getvalue(mutex,&value);
-        printf("semaphore - %d\n",value);
+        printf("main semaphore value - %d\n",value);                                                 // release semaphore
+        sem_post(mutex);
+        queueMutex = sem_open(QUEUE_SEMAPHORE,O_CREAT,0644,0);                 // creating semaphore (mutex)
+        if(queueMutex == SEM_FAILED)
+        {
+            perror("unable to create semaphore");
+            sem_unlink(QUEUE_SEMAPHORE);                                  // destroying semaphore
+            return -1;
+        }
+        sem_trywait(queueMutex);
+        sem_getvalue(queueMutex,&value);
+        printf("queue semaphore value - %d\n",value);
+        sem_post(queueMutex);
+        queueFileMutex = sem_open(QUEUE_FILE_SEMAPHORE,O_CREAT,0644,0);                 // creating semaphore (mutex)
+        if(queueFileMutex == SEM_FAILED)
+        {
+            perror("unable to open semaphore");
+            sem_unlink(QUEUE_FILE_SEMAPHORE);                                  // destroying semaphore
+            return -1;
+        }
+        sem_trywait(queueFileMutex);
+        sem_getvalue(queueFileMutex,&value);
+        printf("file semaphore value - %d\n",value);
+        sem_post(queueFileMutex);
         char buf[100];
+
+        printf("logger\n");
+        strcpy(buf,"gnome-terminal -x sh -c 'exec /home/alexey/Lab_1/build-Logger-Desktop_Qt_5_8_0_GCC_64bit-Debug/Logger ");
+        strcat(buf,std::to_string((int)getpid()).c_str());           // add pid to command argument
+        strcat(buf,"'");
+        system(buf);
+
+        int loggerId = 0;
+        loggerId = getInt();
+        printf("getting - %d\n",loggerId);
+
+
         for(int i = 0; i < CLIENT_COUNT; i++)
         {
             cout << "Client process has been created" << endl;
@@ -150,6 +240,9 @@ int main(int argc, char *argv[])
 
         printf("after create\n");
         Compiler *compiler = new Compiler(6);                            // 7 commands
+
+        kill(loggerId,SIGUSR1);
+
         int clientClose = CLIENT_COUNT;
         while (clientClose > 0)                                          // while not all was closed
         {
@@ -164,7 +257,7 @@ int main(int argc, char *argv[])
                     printf("compiler can't connect\n");
                     return -1;
                 }
-                char* str = new char[BUFFSIZE];
+                char str[BUFFSIZE];
                 switch( compiler->run(str) )                             // read and compare string
                 {
                 case 1:
@@ -187,9 +280,17 @@ int main(int argc, char *argv[])
                 sem_post(mutex);                                         // release semaphore
             }
         }
+
+        sem_wait(mutex);
         sem_close(mutex);                                                // close semaphore
-        sem_destroy(mutex);                                              // destroy semaphore
+        sem_destroy(mutex);
+
+        sem_wait(queueMutex);// destroy semaphore
+        sem_close(queueMutex);
+        sem_destroy(queueMutex);
+
         unlink(PIPE_NAME);                                               // close Pipe
+        unlink(QUEUE_PIPE);
         return 0;
     }
 #endif

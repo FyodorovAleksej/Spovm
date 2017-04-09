@@ -1,6 +1,19 @@
 #include "compiler.h"
 #define BUFF_SIZE 256
 #define PIPE_NAME "./fifofile"
+
+/*
+ * Create new Compiler with
+ * @param new_count - the count of supported extension:
+ * 2 and more - ".c"
+ * 3 and more - ".java"
+ * 4 and more - ".py"
+ * 5 and more - ".asm"
+ * 6 and more - ".class"
+ * 7 and more - ".js"
+ * 8 and more - ".rb"
+ * other      - ".cpp"
+ */
 Compiler::Compiler(int new_count)
 {
     printf("Create compilator\n");
@@ -61,6 +74,20 @@ Compiler::Compiler(int new_count)
     printf("creating succesfully\n");
 }
 
+/*
+ * the destructor of Compiler
+ */
+Compiler::~Compiler()
+{
+
+}
+
+/*
+ * this compiler suport this extension ?:
+ * @param name - name of file
+ * @return: true - if this file is supported
+ *         false - if this file isn't supported
+ */
 bool Compiler::getCommand(char* name)
 {
     for (int i = 0; i < this->count_of_commands; i++)
@@ -73,22 +100,9 @@ bool Compiler::getCommand(char* name)
     return false;
 }
 
-bool Compiler::isContain(char* name)
-{
-   for (int i = 0; i < this->count_of_commands; i++)
-   {
-        if (commands[i]->equals(name))
-        {
-           return true;
-        }
-   }
-   return false;
-}
-
-Compiler::~Compiler()
-{
-}
-
+/*
+ * compare for error extension - ".pdf"
+ */
 bool Compiler::cmp(char* str)
 {
     Command* error = new Command(".pdf");
@@ -121,7 +135,10 @@ int Compiler::switchCommand(char* str)
 int Compiler::run(char* str)
 {
     printf("compiler run\n");
-    sleep(1);
+    for (int i = 0; i < BUFF_SIZE; i++)
+    {
+        str[i] = '\0';
+    }
     printf("alive\n");
     fread(str,1,BUFF_SIZE,pipe);
     puts(str);

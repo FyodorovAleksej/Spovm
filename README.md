@@ -1,2 +1,2 @@
 # Spovm
-the open repository with labs of the subject SPOVM in the BSUIR
+This repository was moved on [Cascade Inc -> Spovm](https://github.com/CascadeInc/Spovm)
